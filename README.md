@@ -29,7 +29,7 @@ Possible options are listed here (all options are case-sensitive):
 - Target: `Perf`, `PerfPerCost`
 - TrainingLoop: `NoOverlap`, `Overlap`
 
-Once invoked, the optimizer tries to optimize the network BW distribution under given setup. You can run this until the BW allocation saturates.
+Once invoked, the optimizer tries to optimize the network BW distribution under the given setup. You can run this until the BW allocation saturates.
 
 ## Reproducing Table VI
 In order to reproduce Table VI, You can go through optimizationb of four configurations.
@@ -41,42 +41,41 @@ docker run sc245-artifact optimize.sh 4D 325 1T Perf Overlap
 ```
 
 # Running Training Performance and Network Cost Estimation
-Once Network BW distribution is found by the optimizer above, the user then can plug in the found BW setup and run the performance and network cost profiler. As Fig 12-15 of the paper has a plethora of datapoints, we have run the optimizer and pre-populated the setup (`evaluation_input/script_full`). We provide `evaluate.sh` to run the experiments and reproduce each figures.
+Once Network BW distribution is found by the optimizer above, the user then can plug in the found BW setting and run the performance and network cost profiler. As Fig 12-15 of the paper has a plethora of datapoints, we have run the optimizer and pre-populated the setup (`evaluation_input/script_full`). We provide `evaluate.sh` to run the experiments and reproduce each figure.
 
 ## Small Experiment
-As Fig 12-15 all have a number of datapoints, the full simulation on the Docker container can take days to finish. In order to speed up the AE process, we created a **small** experimental setups. Instead of fully simulating the entire datapoints, small experiment simulates the subset of each experiment and reproduces the first subplot of Fig 12-14 (unfortunately, Fig 15 is comparing among all the other results and requires full simulation).
+As Fig 12-15 all have a number of datapoints, the full simulation on the Docker container can take days to finish. In order to speed up the AE process, we created a **small** experimental setup. Instead of fully simulating the entire plot, the `small` experiment simulates only the subset of each experiment and reproduces the first subplot of Fig 12-14 (unfortunately, Fig 15 is inherently comparing among all the other results and requires full simulation).
 
-In order to run the small experiment, first run the command below to enter the Docker container:
+To run the small experiment, first, run the command below to enter the Docker container:
 ```bash
 docker run -v $(pwd)/output:/output -it sc245-artifact  // opens container shell
 ```
 
-Once ready, then please run the small experiment:
+Once ready, please initiate the small experiment:
 ```bash
 evaluate.sh small
 top  // to check simulation status
 ```
+This creates multiple background profiling jobs and can take hours, so please leave the container open and running. Once finished, you can exit the container.
 
-This can take hours, so please leave the container open and running. Once finished, you can exit the container.
-
-When the evaluation is finished, you can draw the plot by running the script below:
+When the evaluation is fully done, you can plot each subfigure by running the script below:
 ```bash
 docker run -v $(pwd)/output:/output sc245-artifact plot.sh small <Fig>
 ```
 - Fig (case-sensitive): `fig12`, `fig13`, `fig14`
 
-You can check the plot at `output/graph_small/`.
+This will generate the very first subplot of each figure. You can check the result at `output/graph_small/`.
 
 ## Full Experiment
-Still, if you have enough time to simulate the entire configuration, you can easily run the full simulation just like above.
+Still, if you have enough time to simulate the entire configuration, you can easily run the full simulation in a very analogous manner shown above.
 ```bash
 docker run -v $(pwd)/output:/output -it sc245-artifact  // opens container shell
 evaluate.sh full
 top  // if you want to check the status
 ```
-This creates a lot of background jobs so please be patient and leave the container open. Once done, you can plot the figures:
+This creates lots of (755 in total) background profiling jobs, so please be patient and leave the container shell open. Once fully executed (i.e., no remaining background jobs when you check by `top`), you can exit the container shell and plot the figures:
 ```bash
 docker run -v $(pwd)/output:/output sc245-artifact plot.sh full <Fig>
 ```
 - Fig (case-sensitive): `fig12`, `fig13`, `fig14`, `fig15`
-You can check the figures at `output/graph_full/`.
+This will reproduce the full plot. You can check the figures at `output/graph_full/`.
