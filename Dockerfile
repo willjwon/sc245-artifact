@@ -5,21 +5,31 @@ LABEL maintainer="Will Won <william.won@gatech.edu>"
 # Install dependencies
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt -y update
-RUN apt -y install build-essential cmake git libboost-all-dev python3
+RUN apt -y install build-essential git python3 python3-pip cmake zsh libboost-all-dev 
 
-# Copy files
+# Install Python dependencies
 WORKDIR /app
-COPY . .
+COPY requirements.txt .
+RUN pip3 install -r requirements.txt
 
-# Clone repo
-RUN git clone --recursive https://github.com/astra-sim/astra-sim.git
+# Copy inputs
+COPY optimizer_input optimizer_input
 
-WORKDIR /app/astra-sim
-RUN git checkout willjwon/develop
+# Copy run scripts
+COPY script .
+RUN chmod +x *.sh
+ENV PATH="/app:${PATH}"
 
-WORKDIR /app/astra-sim/extern/network_backend/analytical
-RUN git checkout develop
+# Clone ASTRA-sim and set branch
+# RUN git clone --recursive --branch willjwon/develop \
+#     https://github.com/astra-sim/astra-sim.git
+# WORKDIR /app/astra-sim/extern/network_backend/analytical
+# RUN git checkout develop
+
+# Clone topology-bw-optimizer
+WORKDIR /app
+RUN git clone --branch sc22-artifact https://github.com/willjwon/topology-bw-optimizer.git
+ENV PYTHONPATH=".:/app/topology-bw-optimizer:${PYTHONPATH}"
 
 # Reset workdir
 WORKDIR /app
-

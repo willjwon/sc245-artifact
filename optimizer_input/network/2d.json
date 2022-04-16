@@ -1,0 +1,6 @@
+{
+  "total-bandwidth": 100,
+  "npus-count": [8, 128],
+  "topology": ["Ring", "Switch"],
+  "network-type": ["Package", "Pod"]
+}

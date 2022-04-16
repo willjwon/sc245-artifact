@@ -1,0 +1,21 @@
+{
+  "Tile": {
+    "Link": 2.0
+  },
+
+  "Package": {
+    "Link": 4.0,
+    "Switch": 13.0
+  },
+
+  "Node": {
+    "Link": 4.0,
+    "Switch": 13.0
+  },
+
+  "Pod": {
+    "Link": 7.8,
+    "Switch": 18.0,
+    "Nic": 31.6
+  }
+}
