@@ -78,4 +78,5 @@ This creates lots of (755 in total) background profiling jobs, so please be pati
 docker run -v $(pwd)/output:/output sc245-artifact plot.sh full <Fig>
 ```
 - Fig (case-sensitive): `fig12`, `fig13`, `fig14`, `fig15`
+
 This will reproduce the full plot. You can check the figures at `output/graph_full/`.
