@@ -111,7 +111,7 @@ for workload in "${WORKLOAD[@]}"; do
         echo "[SCRIPT] Initiate ${filename}"
 
         "${BINARY}" \
-          --network-configuration="${INPUT_DIR}/network/analytical/${NETWORK[${i}]}" \
+          --network-configuration="${INPUT_DIR}/network/${NETWORK[${i}]}" \
           --system-configuration="${INPUT_DIR}/system/${SYSTEM[${i}]}" \
           --workload-configuration="${INPUT_DIR}/workload/${workload}" \
           --path="${STATS}/" \
