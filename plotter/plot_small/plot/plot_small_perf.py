@@ -1,17 +1,12 @@
-from data.csv_reader import CsvReader
-from typing import Dict, List
-import os
+from data_small.csv_reader import CsvReader
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import sys
-import warnings
+import os
 
 
 def plot_workload():
-    # ignore pandas warnings
-    warnings.filterwarnings('ignore')
-
     # parse argument
     result_dir = sys.argv[1]
     output_dir = sys.argv[2]
@@ -45,6 +40,7 @@ def plot_workload():
                        columnspacing=1,
                        markerscale=3)
     legend.legendHandles[-1].set_markersize(20)
+    ax.set_ylim(0.4, 1.6)
 
     # save graph
     if not os.path.exists(output_dir):
@@ -53,14 +49,14 @@ def plot_workload():
     fig.set_size_inches((9, 6))
     fig.tight_layout(rect=[0, -0.07, 1, 1.03], h_pad=0, w_pad=0)
 
-    fig.savefig(os.path.join(output_dir, 'fig14.pdf'))
+    fig.savefig(os.path.join(output_dir, 'fig12.pdf'))
     fig.clf()
     plt.close(fig=fig)
 
-    print("Fig 14 (Small) plotting finished.")
+    print("Fig 12 (Small) plotting finished.")
 
 
-def plot_subplot(dataset: pd.DataFrame, ax):
+def plot_subplot(dataset: pd.DataFrame, ax) -> None:
     # setting
     markers = True
     markersize = 25
@@ -76,24 +72,7 @@ def plot_subplot(dataset: pd.DataFrame, ax):
 
     data = dataset.loc[~dataset['BWAllocation'].str.contains('DGX')]
 
-    # compute perf/cost
-    baseline_row = baseline.loc[baseline['BW'] == 100]
-    baseline_speed = baseline_row['CommsTime'].item()
-    baseline_cost = baseline_row['Cost'].item()
-
-    baseline['Speedup'] = baseline_speed / baseline['CommsTime']
-    baseline['Costup'] = baseline['Cost'] / baseline_cost
-    baseline['PerfCost'] = baseline['Speedup'] / baseline['Costup']
-
-    data['Speedup'] = baseline_speed / data['CommsTime']
-    data['Costup'] = data['Cost'] / baseline_cost
-    data['PerfCost'] = data['Speedup'] / data['Costup']
-    
-    if len(dgx) > 0:
-        dgx['Speedup'] = baseline_speed / dgx['CommsTime']
-        dgx['Costup'] = dgx['Cost'] / baseline_cost
-        dgx['PerfCost'] = dgx['Speedup'] / dgx['Costup']
-
+    # create plot data
     plot_data = pd.DataFrame()
 
     for index, row in data.iterrows():
@@ -101,22 +80,23 @@ def plot_subplot(dataset: pd.DataFrame, ax):
         if bw % 100 != 0:
             continue
 
-        baseline_perf_cost = baseline.loc[baseline['BW'] == bw]['PerfCost'].item()
-        perf_cost_up = row['PerfCost'] / baseline_perf_cost
+        baseline_time = baseline.loc[baseline['BW'] == bw]['CommsTime'].item()
+        speedup = baseline_time / row['CommsTime']
 
         new_row = pd.DataFrame({
             'BW': [bw],
             'BWAllocation': [row['BWAllocation']],
-            'PerfCostUp': [perf_cost_up],
+            'Speedup': [speedup],
             'Feasible': [row['Feasible']]
         })
         plot_data = pd.concat([plot_data, new_row])
+
     plot_data.sort_values(by='BWAllocation', ascending=True, inplace=True)
     plot_data.reset_index(drop=True, inplace=True)
 
     plot_data_solid = plot_data.loc[plot_data['Feasible'] == 'yes']
-
     plot_data_dashed = plot_data.loc[plot_data['Feasible'] == 'no']
+
     for bw_allocation in plot_data_dashed['BWAllocation'].unique():
         search_bw = min(plot_data_dashed.loc[plot_data_dashed['BWAllocation'] == bw_allocation]['BW']) - 100
 
@@ -131,35 +111,36 @@ def plot_subplot(dataset: pd.DataFrame, ax):
             new_row = pd.DataFrame({
                 'BW': [100],
                 'BWAllocation': [bw_allocation],
-                'PerfCostUp': [-100],
+                'Speedup': [0],
                 'Feasible': ['no']
             })
             plot_data_dashed = pd.concat([plot_data_dashed, new_row])
     plot_data_dashed = plot_data_dashed.sort_values(by='BWAllocation', ascending=True)
 
     sns.lineplot(data=plot_data_dashed, ax=ax,
-                 x='BW', y='PerfCostUp',
+                 x='BW', y='Speedup',
                  hue='BWAllocation', style='BWAllocation', linestyle='--',
                  markers=markers, markersize=markersize,
                  dashes=False, linewidth=dashed_line_width)
 
     sns.lineplot(data=plot_data_solid, ax=ax,
-                 x='BW', y='PerfCostUp',
+                 x='BW', y='Speedup',
                  hue='BWAllocation', style='BWAllocation', linestyle='-',
                  markers=markers, markersize=markersize,
                  dashes=False, linewidth=solid_line_width)
 
     if len(dgx) > 0:
         bw = dgx.loc[0, 'BW'].item()
-        baseline_perf_cost = baseline.loc[baseline['BW'] == bw]['PerfCost'].item()
-        dgx_perf_cost = dgx.loc[0, 'PerfCost'].item() / baseline_perf_cost
-        ax.plot(bw, dgx_perf_cost, linestyle='', marker="o", markersize=dgx_marker_size,
+        baseline_time = baseline.loc[baseline['BW'] == bw]['CommsTime'].item()
+        speedup = baseline_time / dgx.loc[0, 'CommsTime'].item()
+
+        ax.plot(bw, speedup, linestyle='', marker="o", markersize=dgx_marker_size,
                 markerfacecolor="red", markeredgecolor="red",
                 label="DGX-like")
 
     ax.set_title("T-17B + 2D", weight='bold')
     ax.set_xlabel("BW/NPU (GB/s)", weight='bold')
-    ax.set_ylabel("Normalized Perf./Cost", weight='bold')
+    ax.set_ylabel("Speedup Over 2D EqualBW", weight='bold')
     ax.get_legend().remove()
 
     ax.set_xticks(range(100, 1001, 100))

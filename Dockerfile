@@ -38,7 +38,7 @@ RUN ./build.sh -c
 # Clone topology-bw-optimizer
 WORKDIR /app
 RUN git clone --branch sc22-artifact https://github.com/willjwon/topology-bw-optimizer.git
-ENV PYTHONPATH=".:/app/topology-bw-optimizer:/app/plotter:${PYTHONPATH}"
+ENV PYTHONPATH=".:/app/topology-bw-optimizer:/app/plotter/plot_small:/app/plotter/plot_full:${PYTHONPATH}"
 
 # Reset workdir
 WORKDIR /app

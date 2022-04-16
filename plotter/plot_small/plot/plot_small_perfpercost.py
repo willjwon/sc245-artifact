@@ -1,12 +1,17 @@
-from data.csv_reader import CsvReader
+from data_small.csv_reader import CsvReader
+from typing import Dict, List
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import sys
+import warnings
 
 
 def plot_workload():
+    # ignore pandas warnings
+    warnings.filterwarnings('ignore')
+
     # parse argument
     result_dir = sys.argv[1]
     output_dir = sys.argv[2]
@@ -29,7 +34,6 @@ def plot_workload():
 
     # plot
     plot_subplot(dataset=dataset, ax=ax)
-    # exit(-1)
 
     # aesthetics
     handles, labels = ax.get_legend_handles_labels()
@@ -37,7 +41,7 @@ def plot_workload():
     labels = labels[:3] + labels[-1:]
     legend = ax.legend(handles=handles, labels=labels,
                        loc="upper center", ncol=2,
-                       bbox_to_anchor=(0.5, -0.25),
+                       bbox_to_anchor=(0.5, -0.19),
                        columnspacing=1,
                        markerscale=3)
     legend.legendHandles[-1].set_markersize(20)
@@ -47,82 +51,115 @@ def plot_workload():
         os.makedirs(output_dir)
 
     fig.set_size_inches((9, 6))
-    fig.tight_layout(rect=[-0.03, -0.1, 1.03, 1.03], h_pad=0, w_pad=0)
+    fig.tight_layout(rect=[0, -0.07, 1, 1.03], h_pad=0, w_pad=0)
 
-    fig.savefig(os.path.join(output_dir, 'fig13.pdf'))
+    fig.savefig(os.path.join(output_dir, 'fig14.pdf'))
     fig.clf()
     plt.close(fig=fig)
 
-    print("Fig 13 (Small) plotting finished.")
+    print("Fig 14 (Small) plotting finished.")
 
 
 def plot_subplot(dataset: pd.DataFrame, ax):
+    # setting
     markers = True
     markersize = 25
     dgx_marker_size = 25
     solid_line_width = 10
     dashed_line_width = 6
 
+    # filter data
+    baseline = dataset.loc[dataset['BWAllocation'] == 'EqualBW']
+
     dgx = dataset.loc[dataset['BWAllocation'] == 'DGX-like']
     dgx.reset_index(drop=True, inplace=True)
 
     data = dataset.loc[~dataset['BWAllocation'].str.contains('DGX')]
-    data = data.loc[data['BW'] % 100 == 0]
 
-    data.sort_values(by='BWAllocation', ascending=True, inplace=True)
-    data.reset_index(drop=True, inplace=True)
+    # compute perf/cost
+    baseline_row = baseline.loc[baseline['BW'] == 100]
+    baseline_speed = baseline_row['CommsTime'].item()
+    baseline_cost = baseline_row['Cost'].item()
 
-    plot_data_solid = data.loc[data['Feasible'] == 'yes']
+    baseline['Speedup'] = baseline_speed / baseline['CommsTime']
+    baseline['Costup'] = baseline['Cost'] / baseline_cost
+    baseline['PerfCost'] = baseline['Speedup'] / baseline['Costup']
 
-    plot_data_dashed = data.loc[data['Feasible'] == 'no']
+    data['Speedup'] = baseline_speed / data['CommsTime']
+    data['Costup'] = data['Cost'] / baseline_cost
+    data['PerfCost'] = data['Speedup'] / data['Costup']
+    
+    if len(dgx) > 0:
+        dgx['Speedup'] = baseline_speed / dgx['CommsTime']
+        dgx['Costup'] = dgx['Cost'] / baseline_cost
+        dgx['PerfCost'] = dgx['Speedup'] / dgx['Costup']
+
+    plot_data = pd.DataFrame()
+
+    for index, row in data.iterrows():
+        bw = row['BW']
+        if bw % 100 != 0:
+            continue
+
+        baseline_perf_cost = baseline.loc[baseline['BW'] == bw]['PerfCost'].item()
+        perf_cost_up = row['PerfCost'] / baseline_perf_cost
+
+        new_row = pd.DataFrame({
+            'BW': [bw],
+            'BWAllocation': [row['BWAllocation']],
+            'PerfCostUp': [perf_cost_up],
+            'Feasible': [row['Feasible']]
+        })
+        plot_data = pd.concat([plot_data, new_row])
+    plot_data.sort_values(by='BWAllocation', ascending=True, inplace=True)
+    plot_data.reset_index(drop=True, inplace=True)
+
+    plot_data_solid = plot_data.loc[plot_data['Feasible'] == 'yes']
+
+    plot_data_dashed = plot_data.loc[plot_data['Feasible'] == 'no']
     for bw_allocation in plot_data_dashed['BWAllocation'].unique():
         search_bw = min(plot_data_dashed.loc[plot_data_dashed['BWAllocation'] == bw_allocation]['BW']) - 100
 
         if search_bw >= 100:
-            search_data = data.loc[data['BWAllocation'] == bw_allocation]
+            search_data = plot_data.loc[plot_data['BWAllocation'] == bw_allocation]
             found_row = search_data.loc[search_data['BW'] == search_bw]
             plot_data_dashed = pd.concat([plot_data_dashed, found_row])
 
     bw_allocation_used = plot_data_dashed['BWAllocation'].unique()
-    for bw_allocation in data['BWAllocation'].unique():
+    for bw_allocation in plot_data['BWAllocation'].unique():
         if bw_allocation not in bw_allocation_used:
-            new_row = data.loc[data['BWAllocation'] == bw_allocation].iloc[0]
-            new_row['Cost'] = -100
-            # plot_data_dashed = plot_data_dashed.append(new_row)
+            new_row = pd.DataFrame({
+                'BW': [100],
+                'BWAllocation': [bw_allocation],
+                'PerfCostUp': [-100],
+                'Feasible': ['no']
+            })
             plot_data_dashed = pd.concat([plot_data_dashed, new_row])
     plot_data_dashed = plot_data_dashed.sort_values(by='BWAllocation', ascending=True)
 
     sns.lineplot(data=plot_data_dashed, ax=ax,
-                 x='BW', y='Cost',
+                 x='BW', y='PerfCostUp',
                  hue='BWAllocation', style='BWAllocation', linestyle='--',
                  markers=markers, markersize=markersize,
                  dashes=False, linewidth=dashed_line_width)
 
     sns.lineplot(data=plot_data_solid, ax=ax,
-                 x='BW', y='Cost',
+                 x='BW', y='PerfCostUp',
                  hue='BWAllocation', style='BWAllocation', linestyle='-',
                  markers=markers, markersize=markersize,
                  dashes=False, linewidth=solid_line_width)
 
     if len(dgx) > 0:
         bw = dgx.loc[0, 'BW'].item()
-        cost = dgx.loc[0, 'Cost'].item()
-
-        ax.plot(bw, cost, linestyle='', marker="o", markersize=dgx_marker_size,
+        baseline_perf_cost = baseline.loc[baseline['BW'] == bw]['PerfCost'].item()
+        dgx_perf_cost = dgx.loc[0, 'PerfCost'].item() / baseline_perf_cost
+        ax.plot(bw, dgx_perf_cost, linestyle='', marker="o", markersize=dgx_marker_size,
                 markerfacecolor="red", markeredgecolor="red",
                 label="DGX-like")
 
-    ax.yaxis.offsetText.set_visible(False)
-    ax.ticklabel_format(axis='y', style='sci')
-    ax.yaxis.major.formatter._useMathText = True
-    ax.text(0.08, 0.93, r'($\times 10^{7}$)',
-            horizontalalignment='center', verticalalignment='center',
-            transform=ax.transAxes,
-            fontsize=22)
-
     ax.set_title("T-17B + 2D", weight='bold')
     ax.set_xlabel("BW/NPU (GB/s)", weight='bold')
-    ax.set_ylabel("Network Cost ($)", weight='bold')
+    ax.set_ylabel("Normalized Perf./Cost", weight='bold')
     ax.get_legend().remove()
 
     ax.set_xticks(range(100, 1001, 100))

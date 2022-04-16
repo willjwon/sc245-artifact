@@ -3,7 +3,11 @@ set -e
 
 # Run script
 function plot_small {
-    python3 -u /app/plotter/plot_small/$1.py /output/small /output/graph_small
+    python3 -u /app/plotter/plot_small/plot/$1.py /output/small /output/graph_small
+}
+
+function plot_full {
+    python3 -u /app/plotter/plot_full/plot/$1.py /output/full /output/graph_full
 }
 
 # Parse command line arguments
@@ -17,17 +21,17 @@ small)
     fig14)
         plot_small plot_small_perfpercost;;
     fig15)
-        echo "small, fig15";;
+        echo "Fig 15 doesn't support small setup";;
     esac;;
 full)
     case "$2" in
     fig12)
-        echo "full, fig12";;
+        plot_full plot_perf;;
     fig13)
-        echo "full, fig13";;
+        plot_full plot_cost;;
     fig14)
-        echo "full, fig14";;
+        plot_full plot_perf_per_cost;;
     fig15)
-        echo "full, fig15";;
+        plot_full plot_group;;
     esac;;
 esac

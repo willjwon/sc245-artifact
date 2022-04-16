@@ -131,14 +131,14 @@ class CsvReader:
     @staticmethod
     def parse_bw_allocation_strategy(dataset: pd.DataFrame) -> None:
         for index, row in dataset.iterrows():
-            if 'equal' in row['RunName']:
+            if '_equal' in row['RunName']:
                 dataset.loc[index, 'BWAllocation'] = 'EqualBW'
             elif 'dgx' in row['RunName']:
                 dataset.loc[index, 'BWAllocation'] = 'DGX-like'
-            elif 'perfpercost' in row['RunName']:
-                dataset.loc[index, 'BWAllocation'] = 'PerfPerCostOptBW'
-            elif 'perf' in row['RunName']:
+            elif '_perf_' in row['RunName']:
                 dataset.loc[index, 'BWAllocation'] = 'PerfOptBW'
+            elif '_perfcost_' in row['RunName']:
+                dataset.loc[index, 'BWAllocation'] = 'PerfPerCostOptBW'
             else:
                 print('BW Allocation Scheme Unknown.')
                 exit(-1)
@@ -194,7 +194,7 @@ class CsvReader:
         for index, row in dataset.iterrows():
             if row['Workload'] == 'transformer_17B':
                 dataset.loc[index, 'Workload'] = "Transformer-17B"
-            elif row['Workload'] == 'gpt3':
+            elif row['Workload'] == 'transformer_175B':
                 dataset.loc[index, 'Workload'] = "Transformer-175B"
             elif row['Workload'] == 'transformer_1T':
                 dataset.loc[index, 'Workload'] = "Transformer-1T"
